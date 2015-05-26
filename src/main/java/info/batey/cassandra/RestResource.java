@@ -5,9 +5,8 @@ import com.datastax.driver.core.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.WebRequest;
 
 import javax.annotation.PostConstruct;
@@ -35,8 +34,8 @@ public class RestResource {
     }
 
     // would look nicer with the QueryBuilder API but not supported yet
-    @RequestMapping(value = "/{keyspace}/{table}", produces = "application/json")
-    public String getTable(@PathVariable String keyspace, @PathVariable String table, WebRequest webRequest) {
+    @RequestMapping(method = {RequestMethod.GET}, value = "/{keyspace}/{table}", produces = "application/json")
+    public String get(@PathVariable String keyspace, @PathVariable String table, WebRequest webRequest) {
         Set<String> parameterNames = webRequest.getParameterMap().keySet();
         StringBuilder sb = new StringBuilder("select JSON * from ").append(keyspace).append(".").append(table);
         if (!parameterNames.isEmpty()) sb.append(" where ");
@@ -52,5 +51,11 @@ public class RestResource {
                 .stream().map(row -> row.getString("[json]"))
                 .collect(Collectors.toList());
         return "[" +String.join(",", all) + "]";
+    }
+
+    @RequestMapping(method = {RequestMethod.POST}, value = "/{keyspace}/{table}", consumes = "application/json")
+    public ResponseEntity<String> store(@PathVariable String keyspace, @PathVariable String table, @RequestBody String body) {
+        session.execute(String.format("insert into %s.%s JSON '%s'", keyspace, table, body));
+        return ResponseEntity.ok("OK");
     }
 }
